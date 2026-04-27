@@ -34,7 +34,8 @@ class TestBankTransfer:
         assert form.is_displayed()
 
     # ========== ТК-03 (БАГ-006) ==========
-    def test_03_card_input(self, driver, base_url):
+    def test_03_card_input_bug_006(self, driver, base_url):
+        """БАГ-006: Поле номера карты принимает более 16 цифр"""
         driver.get(base_url)
         wait = WebDriverWait(driver, 10)
         
@@ -42,53 +43,55 @@ class TestBankTransfer:
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
         card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
-        
-        # Вводим 17 цифр
         card.send_keys("12345678901234567")
         
         value = card.get_attribute("value")
-        # Убираем пробелы и проверяем, что не больше 16 цифр
-        assert len(value.replace(" ", "")) <= 16, f"BUG-006: Поле принимает {len(value.replace(' ', ''))} цифр, максимум 16"
+        digits = value.replace(" ", "")
+        
+        assert len(digits) <= 16, f"BUG-006: Поле принимает {len(digits)} цифр, максимум 16"
 
     # ========== ТК-04 (БАГ-002) ==========
-    def test_04_positive_transfer(self, driver, base_url):
+    def test_04_positive_transfer_bug_002(self, driver, base_url):
+        """БАГ-002: При балансе 110 и переводе 100 кнопка должна быть активна, но её нет/неактивна"""
         driver.get(base_url + "/?balance=110&reserved=0")
         wait = WebDriverWait(driver, 10)
         
+        # 1. Выбрать валюту
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
-        # Сначала вводим номер карты (иначе поле суммы не появится)
+        # 2. Ввести номер карты
         card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
         card.send_keys("1234567890123456")
         
-        # Теперь поле суммы появилось
+        # 3. Ввести сумму
         amount = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='1000']")))
         amount.send_keys("100")
         
-        btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Перевести')]")
-        assert btn.is_enabled()
+        # 4. Кнопка должна появиться и быть активной
+        btn = wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Перевести')]")))
+        assert btn.is_enabled(), "BUG-002: Кнопка неактивна при балансе 110 и сумме 100"
 
     # ========== ТК-05 ==========
     def test_05_insufficient_funds(self, driver, base_url):
+        """Проверка ошибки при недостатке средств (кнопка не появляется)"""
         driver.get(base_url + "/?balance=100&reserved=0")
         wait = WebDriverWait(driver, 10)
         
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
-        # Сначала вводим номер карты (иначе поле суммы не появится)
         card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
         card.send_keys("1234567890123456")
         
-        # Теперь поле суммы появилось
         amount = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='1000']")))
         amount.send_keys("150")
         
-        btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Перевести')]")
-        assert not btn.is_enabled()
+        # При недостатке средств кнопка НЕ появляется
+        buttons = driver.find_elements(By.XPATH, "//button[contains(text(), 'Перевести')]")
+        assert len(buttons) == 0, "Кнопка появилась, хотя баланса недостаточно"
         
-        error = driver.find_element(By.XPATH, "//*[contains(text(), 'Недостаточно')]")
+        error = wait.until(EC.presence_of_element_located((By.XPATH, "//*[contains(text(), 'Недостаточно')]")))
         assert error.is_displayed()
 
     # ========== ТК-06 ==========
@@ -104,53 +107,57 @@ class TestBankTransfer:
         assert eur.is_displayed()
 
     # ========== ТК-07 (БАГ-003) ==========
-    def test_07_reserved_more_than_balance(self, driver, base_url):
+    def test_07_reserved_more_than_balance_bug_003(self, driver, base_url):
+        """БАГ-003: При резерве > баланса нет понятного сообщения об ошибке"""
         driver.get(base_url + "/?balance=10000&reserved=15000")
         wait = WebDriverWait(driver, 10)
         
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         
+        # Проверяем, что нет отрицательного доступного остатка
         balance = driver.find_element(By.ID, "rub-sum").text
-        assert "-" not in balance
+        assert "-" not in balance, "BUG-003: Отображается отрицательный баланс"
 
     # ========== ТК-08 (БАГ-004) ==========
-    def test_08_negative_balance_url(self, driver, base_url):
+    def test_08_negative_balance_url_bug_004(self, driver, base_url):
+        """БАГ-004: Отрицательный баланс в URL отображается без валидации"""
         driver.get(base_url + "/?balance=-100&reserved=50")
         wait = WebDriverWait(driver, 10)
         
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         
         balance = driver.find_element(By.ID, "rub-sum").text
-        assert "-" not in balance
+        assert "-" not in balance, f"BUG-004: Баланс отображается как {balance}, отрицательное значение не должно быть"
 
     # ========== ТК-09 (БАГ-005) ==========
-    def test_09_non_numeric_url(self, driver, base_url):
+    def test_09_non_numeric_url_bug_005(self, driver, base_url):
+        """БАГ-005: Нечисловые значения в URL отображаются как NaN"""
         driver.get(base_url + "/?balance=abc&reserved=xyz")
         wait = WebDriverWait(driver, 10)
         
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         
         balance = driver.find_element(By.ID, "rub-sum").text
-        assert "NaN" not in balance
+        assert "NaN" not in balance, f"BUG-005: Баланс отображается как {balance}, не должно быть NaN"
 
     # ========== ТК-10 (БАГ-001) ==========
-    def test_10_negative_amount_input(self, driver, base_url):
+    def test_10_negative_amount_input_bug_001(self, driver, base_url):
+        """БАГ-001: Поле суммы принимает отрицательные значения и переводит"""
         driver.get(base_url + "/?balance=1000&reserved=0")
         wait = WebDriverWait(driver, 10)
         
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
-        # Сначала вводим номер карты (иначе поле суммы не появится)
         card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
         card.send_keys("1234567890123456")
         
-        # Теперь поле суммы появилось
         amount = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='1000']")))
         amount.send_keys("-500")
         
-        btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Перевести')]")
-        assert not btn.is_enabled()
+        # БАГ-001: кнопка появляется при отрицательной сумме
+        btn = wait.until(EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Перевести')]")))
+        assert not btn.is_enabled(), "BUG-001: Кнопка активна при отрицательной сумме"
 
     # ========== ТК-11 ==========
     def test_11_zero_values(self, driver, base_url):
