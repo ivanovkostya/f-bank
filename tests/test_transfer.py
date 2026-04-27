@@ -33,7 +33,7 @@ class TestBankTransfer:
         
         assert form.is_displayed()
 
-    # ========== ТК-03 ==========
+    # ========== ТК-03 (БАГ-006) ==========
     def test_03_card_input(self, driver, base_url):
         driver.get(base_url)
         wait = WebDriverWait(driver, 10)
@@ -42,10 +42,13 @@ class TestBankTransfer:
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
         card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
-        card.send_keys("1234567890123456")
+        
+        # Вводим 17 цифр
+        card.send_keys("12345678901234567")
         
         value = card.get_attribute("value")
-        assert len(value.replace(" ", "")) == 16
+        # Убираем пробелы и проверяем, что не больше 16 цифр
+        assert len(value.replace(" ", "")) <= 16, f"BUG-006: Поле принимает {len(value.replace(' ', ''))} цифр, максимум 16"
 
     # ========== ТК-04 (БАГ-002) ==========
     def test_04_positive_transfer(self, driver, base_url):
