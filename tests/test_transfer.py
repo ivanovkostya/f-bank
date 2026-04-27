@@ -58,6 +58,11 @@ class TestBankTransfer:
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
+        # Сначала вводим номер карты (иначе поле суммы не появится)
+        card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
+        card.send_keys("1234567890123456")
+        
+        # Теперь поле суммы появилось
         amount = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='1000']")))
         amount.send_keys("100")
         
@@ -72,7 +77,12 @@ class TestBankTransfer:
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
-        amount = driver.find_element(By.XPATH, "//input[@placeholder='1000']")
+        # Сначала вводим номер карты (иначе поле суммы не появится)
+        card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
+        card.send_keys("1234567890123456")
+        
+        # Теперь поле суммы появилось
+        amount = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='1000']")))
         amount.send_keys("150")
         
         btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Перевести')]")
@@ -131,7 +141,12 @@ class TestBankTransfer:
         wait.until(EC.element_to_be_clickable((By.XPATH, "//*[contains(text(), 'Рубли')]"))).click()
         wait.until(EC.presence_of_element_located((By.XPATH, "//h2[contains(text(), 'Перевод')]")))
         
-        amount = driver.find_element(By.XPATH, "//input[@placeholder='1000']")
+        # Сначала вводим номер карты (иначе поле суммы не появится)
+        card = wait.until(EC.presence_of_element_located((By.XPATH, "//input[contains(@placeholder, '0000')]")))
+        card.send_keys("1234567890123456")
+        
+        # Теперь поле суммы появилось
+        amount = wait.until(EC.presence_of_element_located((By.XPATH, "//input[@placeholder='1000']")))
         amount.send_keys("-500")
         
         btn = driver.find_element(By.XPATH, "//button[contains(text(), 'Перевести')]")
